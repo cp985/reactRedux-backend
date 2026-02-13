@@ -1,97 +1,83 @@
-const Order = require('../models/Order');
 const Product = require('../models/Product');
 
-// @desc    Crea nuovo ordine
-// @route   POST /api/orders
-// @access  Private
-exports.createOrder = async (req, res) => {
+// @desc    Get tutti i prodotti
+// @route   GET /api/products
+// @access  Public
+exports.getAllProducts = async (req, res) => {
   try {
-    const { prodotti, indirizzoSpedizione, metodoPagamento } = req.body;
+    const products = await Product.find();
+    
+    res.json({
+      success: true,
+      count: products.length,
+      products
+    });
+  } catch (error) {
+    console.error('Errore get all products:', error);
+    res.status(500).json({ 
+      message: 'Errore del server',
+      error: error.message 
+    });
+  }
+};
+
+// @desc    Get prodotto singolo per ID
+// @route   GET /api/products/:id
+// @access  Public
+exports.getProductById = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    
+    if (!product) {
+      return res.status(404).json({ 
+        message: 'Prodotto non trovato' 
+      });
+    }
+    
+    res.json({
+      success: true,
+      product
+    });
+  } catch (error) {
+    console.error('Errore get product by id:', error);
+    res.status(500).json({ 
+      message: 'Errore del server',
+      error: error.message 
+    });
+  }
+};
+
+// @desc    Crea nuovo prodotto
+// @route   POST /api/products
+// @access  Private/Admin
+exports.createProduct = async (req, res) => {
+  try {
+    const { nome, descrizione, prezzo, categoria, immagine, stock, rarità, classe } = req.body;
     
     // Validazione
-    if (!prodotti || prodotti.length === 0) {
+    if (!nome || !descrizione || !prezzo || !categoria) {
       return res.status(400).json({ 
-        message: 'Nessun prodotto nell\'ordine' 
+        message: 'Compila tutti i campi obbligatori' 
       });
     }
     
-    if (!indirizzoSpedizione) {
-      return res.status(400).json({ 
-        message: 'Indirizzo di spedizione mancante' 
-      });
-    }
-    
-    // Calcola totale e verifica disponibilità
-    let totale = 0;
-    const prodottiOrdine = [];
-    
-    for (let item of prodotti) {
-      const prodotto = await Product.findById(item.prodottoId);
-      
-      if (!prodotto) {
-        return res.status(404).json({ 
-          message: `Prodotto ${item.prodottoId} non trovato` 
-        });
-      }
-      
-      if (prodotto.stock < item.quantita) {
-        return res.status(400).json({ 
-          message: `Stock insufficiente per ${prodotto.nome}` 
-        });
-      }
-      
-      prodottiOrdine.push({
-        prodottoId: prodotto._id,
-        nome: prodotto.nome,
-        quantita: item.quantita,
-        prezzo: prodotto.prezzo
-      });
-      
-      totale += prodotto.prezzo * item.quantita;
-      
-      // Aggiorna stock
-      prodotto.stock -= item.quantita;
-      await prodotto.save();
-    }
-    
-    // Crea ordine
-    const order = await Order.create({
-      userId: req.user.id,
-      prodotti: prodottiOrdine,
-      totale,
-      indirizzoSpedizione,
-      metodoPagamento: metodoPagamento || 'carta'
+    const product = await Product.create({
+      nome,
+      descrizione,
+      prezzo,
+      categoria,
+      immagine,
+      stock: stock || 0,
+      rarità,
+      classe
     });
     
     res.status(201).json({
       success: true,
-      order
+      product
     });
   } catch (error) {
-    console.error('Errore creazione ordine:', error);
-    res.status(500).json({ 
-      message: 'Errore del server durante la creazione dell\'ordine',
-      error: error.message 
-    });
-  }
-};
-
-// @desc    Get ordini dell'utente loggato
-// @route   GET /api/orders/myorders
-// @access  Private
-exports.getMyOrders = async (req, res) => {
-  try {
-    const orders = await Order.find({ userId: req.user.id })
-      .populate('prodotti.prodottoId', 'nome immagine')
-      .sort('-createdAt');
-    
-    res.json({
-      success: true,
-      count: orders.length,
-      orders
-    });
-  } catch (error) {
-    console.error('Errore get my orders:', error);
+    console.error('Errore create product:', error);
     res.status(500).json({ 
       message: 'Errore del server',
       error: error.message 
@@ -99,58 +85,38 @@ exports.getMyOrders = async (req, res) => {
   }
 };
 
-// @desc    Get ordine specifico per ID
-// @route   GET /api/orders/:id
-// @access  Private
-exports.getOrderById = async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id)
-      .populate('userId', 'nome cognome email')
-      .populate('prodotti.prodottoId', 'nome immagine');
-    
-    if (!order) {
-      return res.status(404).json({ 
-        message: 'Ordine non trovato' 
-      });
-    }
-    
-    // Verifica che l'utente sia proprietario o admin
-    if (order.userId._id.toString() !== req.user.id && req.user.ruolo !== 'admin') {
-      return res.status(403).json({ 
-        message: 'Non autorizzato a visualizzare questo ordine' 
-      });
-    }
-    
-    res.json({
-      success: true,
-      order
-    });
-  } catch (error) {
-    console.error('Errore get order by id:', error);
-    res.status(500).json({ 
-      message: 'Errore del server',
-      error: error.message 
-    });
-  }
-};
-
-// @desc    Get tutti gli ordini (solo admin)
-// @route   GET /api/orders
+// @desc    Aggiorna prodotto
+// @route   PUT /api/products/:id
 // @access  Private/Admin
-exports.getAllOrders = async (req, res) => {
+exports.updateProduct = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .populate('userId', 'nome cognome email')
-      .populate('prodotti.prodottoId', 'nome immagine')
-      .sort('-createdAt');
+    const product = await Product.findById(req.params.id);
+    
+    if (!product) {
+      return res.status(404).json({ 
+        message: 'Prodotto non trovato' 
+      });
+    }
+    
+    // Aggiorna campi
+    product.nome = req.body.nome || product.nome;
+    product.descrizione = req.body.descrizione || product.descrizione;
+    product.prezzo = req.body.prezzo !== undefined ? req.body.prezzo : product.prezzo;
+    product.categoria = req.body.categoria || product.categoria;
+    product.immagine = req.body.immagine || product.immagine;
+    product.stock = req.body.stock !== undefined ? req.body.stock : product.stock;
+    product.disponibile = req.body.disponibile !== undefined ? req.body.disponibile : product.disponibile;
+    product.rarità = req.body.rarità || product.rarità;
+    product.classe = req.body.classe || product.classe;
+    
+    const updatedProduct = await product.save();
     
     res.json({
       success: true,
-      count: orders.length,
-      orders
+      product: updatedProduct
     });
   } catch (error) {
-    console.error('Errore get all orders:', error);
+    console.error('Errore update product:', error);
     res.status(500).json({ 
       message: 'Errore del server',
       error: error.message 
@@ -158,46 +124,27 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
-// @desc    Aggiorna stato ordine
-// @route   PATCH /api/orders/:id/status
+// @desc    Elimina prodotto
+// @route   DELETE /api/products/:id
 // @access  Private/Admin
-exports.updateOrderStatus = async (req, res) => {
+exports.deleteProduct = async (req, res) => {
   try {
-    const { stato } = req.body;
+    const product = await Product.findById(req.params.id);
     
-    if (!stato) {
-      return res.status(400).json({ 
-        message: 'Stato mancante' 
-      });
-    }
-    
-    const order = await Order.findById(req.params.id);
-    
-    if (!order) {
+    if (!product) {
       return res.status(404).json({ 
-        message: 'Ordine non trovato' 
+        message: 'Prodotto non trovato' 
       });
     }
     
-    order.stato = stato;
-    
-    // Aggiorna date in base allo stato
-    if (stato === 'spedito' && !order.dataSpedizione) {
-      order.dataSpedizione = Date.now();
-    }
-    
-    if (stato === 'consegnato' && !order.dataConsegna) {
-      order.dataConsegna = Date.now();
-    }
-    
-    const updatedOrder = await order.save();
+    await product.deleteOne();
     
     res.json({
       success: true,
-      order: updatedOrder
+      message: 'Prodotto eliminato con successo'
     });
   } catch (error) {
-    console.error('Errore update order status:', error);
+    console.error('Errore delete product:', error);
     res.status(500).json({ 
       message: 'Errore del server',
       error: error.message 
@@ -205,68 +152,22 @@ exports.updateOrderStatus = async (req, res) => {
   }
 };
 
-// @desc    Aggiorna pagamento ordine
-// @route   PATCH /api/orders/:id/pay
-// @access  Private
-exports.updateOrderToPaid = async (req, res) => {
+// @desc    Get prodotti per categoria
+// @route   GET /api/products/category/:categoria
+// @access  Public
+exports.getProductsByCategory = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
-    
-    if (!order) {
-      return res.status(404).json({ 
-        message: 'Ordine non trovato' 
-      });
-    }
-    
-    order.pagato = true;
-    order.dataPagamento = Date.now();
-    order.stato = 'confermato';
-    
-    const updatedOrder = await order.save();
+    const products = await Product.find({ 
+      categoria: req.params.categoria 
+    });
     
     res.json({
       success: true,
-      order: updatedOrder
+      count: products.length,
+      products
     });
   } catch (error) {
-    console.error('Errore update order to paid:', error);
-    res.status(500).json({ 
-      message: 'Errore del server',
-      error: error.message 
-    });
-  }
-};
-
-// @desc    Cancella ordine
-// @route   DELETE /api/orders/:id
-// @access  Private/Admin
-exports.deleteOrder = async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id);
-    
-    if (!order) {
-      return res.status(404).json({ 
-        message: 'Ordine non trovato' 
-      });
-    }
-    
-    // Ripristina stock prodotti
-    for (let item of order.prodotti) {
-      const prodotto = await Product.findById(item.prodottoId);
-      if (prodotto) {
-        prodotto.stock += item.quantita;
-        await prodotto.save();
-      }
-    }
-    
-    await order.deleteOne();
-    
-    res.json({
-      success: true,
-      message: 'Ordine eliminato con successo'
-    });
-  } catch (error) {
-    console.error('Errore delete order:', error);
+    console.error('Errore get products by category:', error);
     res.status(500).json({ 
       message: 'Errore del server',
       error: error.message 
