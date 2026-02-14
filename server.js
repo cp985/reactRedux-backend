@@ -12,6 +12,7 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: 'http://localhost:5173', // Porta del tuo frontend (Vite usa 5173)
+  origin :'https://cp985.github.io/react-tanstack-shop/',
   credentials: true
 }));
 app.use(cors());
