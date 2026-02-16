@@ -45,6 +45,7 @@ exports.registerUser = async (req, res) => {
     
     // Crea utente
     const user = await User.create({
+      username,
       nome,
       cognome,
       email,
