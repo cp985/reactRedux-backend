@@ -166,14 +166,42 @@ exports.getUserProfile = async (req, res) => {
 exports.updateUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-
+    
     if (!user) {
       return res.status(404).json({
         message: "Utente non trovato",
       });
     }
 
-    // Aggiorna campi
+    // ========== CONTROLLO USERNAME DUPLICATO ==========
+    if (req.body.username && req.body.username !== user.username) {
+      const usernameExists = await User.findOne({ 
+        username: req.body.username,
+        _id: { $ne: user._id }  // Escludi l'utente corrente
+      });
+      
+      if (usernameExists) {
+        return res.status(400).json({
+          message: "Username già in uso da un altro utente",
+        });
+      }
+    }
+
+    // ========== CONTROLLO EMAIL DUPLICATA ==========
+    if (req.body.email && req.body.email !== user.email) {
+      const emailExists = await User.findOne({ 
+        email: req.body.email,
+        _id: { $ne: user._id }  // Escludi l'utente corrente
+      });
+      
+      if (emailExists) {
+        return res.status(400).json({
+          message: "Email già in uso da un altro utente",
+        });
+      }
+    }
+
+    // ========== AGGIORNA CAMPI ==========
     user.username = req.body.username || user.username;
     user.nome = req.body.nome || user.nome;
     user.cognome = req.body.cognome || user.cognome;
@@ -184,7 +212,7 @@ exports.updateUserProfile = async (req, res) => {
       user.indirizzo = req.body.indirizzo;
     }
 
-    // Se viene inviata una nuova password
+    // ========== AGGIORNA PASSWORD ==========
     if (req.body.password) {
       if (req.body.password.length < 6) {
         return res.status(400).json({
@@ -195,10 +223,12 @@ exports.updateUserProfile = async (req, res) => {
       user.password = await bcrypt.hash(req.body.password, salt);
     }
 
+    // ========== SALVA MODIFICHE ==========
     const updatedUser = await user.save();
 
     res.json({
       success: true,
+      message: "Profilo aggiornato con successo",
       user: {
         _id: updatedUser._id,
         username: updatedUser.username,
@@ -210,15 +240,24 @@ exports.updateUserProfile = async (req, res) => {
         ruolo: updatedUser.ruolo,
       },
     });
+
   } catch (error) {
     console.error("Errore update profile:", error);
+    
+    // Gestione errore unique constraint di MongoDB
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({
+        message: `${field === 'username' ? 'Username' : 'Email'} già in uso`,
+      });
+    }
+
     res.status(500).json({
       message: "Errore del server",
       error: error.message,
     });
   }
 };
-
 // @desc    Get tutti gli utenti (solo admin)
 // @route   GET /api/users
 // @access  Private/Admin
