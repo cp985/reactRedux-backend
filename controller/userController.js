@@ -16,10 +16,10 @@ const generateToken = (userId) => {
 // @access  Public
 exports.registerUser = async (req, res) => {
   try {
-    const { nome, cognome, email, password, telefono } = req.body;
+    const { username, nome, cognome, email, password, telefono } = req.body;
     
     // Validazione input
-    if (!nome || !cognome || !email || !password) {
+    if (!username||!email || !password) {
       return res.status(400).json({ 
         message: 'Compila tutti i campi obbligatori' 
       });
