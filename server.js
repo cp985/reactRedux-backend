@@ -1,6 +1,4 @@
 require('dotenv').config();
-const mongoose = require('mongoose');
-
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
@@ -12,14 +10,12 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173', // Porta del tuo frontend (Vite usa 5173)
-  origin :'https://cp985.github.io/react-tanstack-shop/',
+  origin: ['http://localhost:5173', 'https://cp985.github.io'],
   credentials: true
 }));
-app.use(cors());
 app.use(express.json());
 
-// Routes (SOLO QUESTE!)
+// Routes
 const productRoutes = require('./routes/productRoutes');
 const userRoutes = require('./routes/userRoutes');
 const orderRoutes = require('./routes/orderRoutes');
@@ -38,13 +34,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server in ascolto sulla porta ${PORT}`);
 });
-
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log('✅ MongoDB connesso');
-    console.log('📍 Database:', mongoose.connection.name); // ← AGGIUNGI QUESTO
-  })
-  .catch(err => console.error('❌ Errore MongoDB:', err));
-
-
-
