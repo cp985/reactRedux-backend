@@ -34,11 +34,10 @@ const userSchema = new mongoose.Schema({
     citta: String,
     cap: String,
     paese: String
-  },
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
   }
+
+},{
+  timestamps: true 
 });
 
 module.exports = mongoose.model('User', userSchema);
