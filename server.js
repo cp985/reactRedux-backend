@@ -1,4 +1,5 @@
 require('dotenv').config();
+const mongoose = require('mongoose');
 
 const express = require('express');
 const cors = require('cors');
@@ -38,6 +39,12 @@ app.listen(PORT, () => {
   console.log(`Server in ascolto sulla porta ${PORT}`);
 });
 
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log('✅ MongoDB connesso');
+    console.log('📍 Database:', mongoose.connection.name); // ← AGGIUNGI QUESTO
+  })
+  .catch(err => console.error('❌ Errore MongoDB:', err));
 
 
 
