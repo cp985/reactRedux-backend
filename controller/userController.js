@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { emailReg, textReg, usernameReg } = require("../util/auth");
 
 // Genera JWT Token
 const generateToken = (userId) => {
@@ -21,10 +22,24 @@ exports.registerUser = async (req, res) => {
       });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({
-        message: "La password deve essere di almeno 6 caratteri",
-      });
+    if (!emailReg(email)) {
+      return res.status(400).json({ message: "Email non valida" });
+    }
+    if (!textReg(password)) {
+      return res
+        .status(400)
+        .json({
+          message:
+            "Password non valida: almeno 8 caratteri, una maiuscola, una minuscola, un numero e un carattere speciale (@$!%*?&).",
+        });
+    }
+    if (!usernameReg(username)) {
+      return res
+        .status(400)
+        .json({
+          message:
+            "Username non valido: 3-20 caratteri, solo lettere, numeri e underscore.",
+        });
     }
 
     const usernameExists = await User.findOne({ username });
@@ -92,6 +107,12 @@ exports.loginUser = async (req, res) => {
       return res.status(400).json({
         message: "Inserisci email e password",
       });
+    }
+        if (!emailReg(email)) {
+      return res.status(400).json({ message: "Email non valida" });
+    }
+    if (!textReg(password)) {
+      return res.status(400).json({ message: "Password non valida" });
     }
 
     // Trova utente
@@ -166,7 +187,7 @@ exports.getUserProfile = async (req, res) => {
 exports.updateUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    
+
     if (!user) {
       return res.status(404).json({
         message: "Utente non trovato",
@@ -175,11 +196,11 @@ exports.updateUserProfile = async (req, res) => {
 
     // ========== CONTROLLO USERNAME DUPLICATO ==========
     if (req.body.username && req.body.username !== user.username) {
-      const usernameExists = await User.findOne({ 
+      const usernameExists = await User.findOne({
         username: req.body.username,
-        _id: { $ne: user._id }  // Escludi l'utente corrente
+        _id: { $ne: user._id }, // Escludi l'utente corrente
       });
-      
+
       if (usernameExists) {
         return res.status(400).json({
           message: "Username già in uso da un altro utente",
@@ -189,11 +210,11 @@ exports.updateUserProfile = async (req, res) => {
 
     // ========== CONTROLLO EMAIL DUPLICATA ==========
     if (req.body.email && req.body.email !== user.email) {
-      const emailExists = await User.findOne({ 
+      const emailExists = await User.findOne({
         email: req.body.email,
-        _id: { $ne: user._id }  // Escludi l'utente corrente
+        _id: { $ne: user._id }, // Escludi l'utente corrente
       });
-      
+
       if (emailExists) {
         return res.status(400).json({
           message: "Email già in uso da un altro utente",
@@ -240,15 +261,14 @@ exports.updateUserProfile = async (req, res) => {
         ruolo: updatedUser.ruolo,
       },
     });
-
   } catch (error) {
     console.error("Errore update profile:", error);
-    
+
     // Gestione errore unique constraint di MongoDB
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
       return res.status(400).json({
-        message: `${field === 'username' ? 'Username' : 'Email'} già in uso`,
+        message: `${field === "username" ? "Username" : "Email"} già in uso`,
       });
     }
 
