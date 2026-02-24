@@ -6,7 +6,8 @@ const {
   getUserProfile,
   updateUserProfile,
   getAllUsers,
-  deleteUser
+  deleteUser,
+   deleteOwnAccount
 } = require('../controller/userController');
 const { protect, admin } = require('../middleware/auth');
 
@@ -17,6 +18,7 @@ router.post('/login', loginUser);
 // Routes private (richiedono autenticazione)
 router.get('/profile', protect, getUserProfile);
 router.put('/profile', protect, updateUserProfile);
+router.delete('/profile', protect, deleteOwnAccount);
 
 // Routes admin (richiedono autenticazione + ruolo admin)
 router.get('/', protect, admin, getAllUsers);

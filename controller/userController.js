@@ -326,3 +326,29 @@ exports.deleteUser = async (req, res) => {
     });
   }
 };
+
+// @desc    Elimina il proprio account
+// @route   DELETE /api/users/profile
+// @access  Private
+exports.deleteOwnAccount = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "Utente non trovato" });
+    }
+
+    // Verifica la password
+    const isPasswordCorrect = await bcrypt.compare(req.body.password, user.password);
+    if (!isPasswordCorrect) {
+      return res.status(401).json({ message: "Password errata" });
+    }
+
+    await user.deleteOne();
+
+    res.json({ success: true, message: "Account eliminato con successo" });
+  } catch (error) {
+    console.error("Errore eliminazione account:", error);
+    res.status(500).json({ message: "Errore del server", error: error.message });
+  }
+};
