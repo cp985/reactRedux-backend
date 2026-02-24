@@ -60,7 +60,8 @@ exports.createOrder = async (req, res) => {
       prodotti: prodottiOrdine,
       totale,
       indirizzoSpedizione,
-      metodoPagamento: metodoPagamento || 'carta'
+      metodoPagamento: metodoPagamento || 'carta',
+     pagato: true 
     });
     
     res.status(201).json({
