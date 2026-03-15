@@ -32,5 +32,5 @@ app.get('/', (req, res) => {
 // Avvia server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server in ascolto sulla porta ${PORT}`);
+  console.log(`Server in ascolto`);
 });
